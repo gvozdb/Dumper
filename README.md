@@ -13,8 +13,9 @@ $ composer require gvozdb/dumper
 ## Usage
 
 ``` php
-$skeleton = new League\Skeleton();
-echo $skeleton->echoPhrase('Hello, League!');
+$config = new \Gvozdb\Dumper\Config\Load('/path/to/config.yaml');
+$backup = new \Gvozdb\Dumper\Backup($config);
+$backup->run();
 ```
 
 ## Change log
