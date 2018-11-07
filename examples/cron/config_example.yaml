@@ -1,0 +1,20 @@
+#
+main:
+    prefix: "%Y%m%d-" #
+    expires: &main.expires 4 #
+    clean_logs: true #
+
+#
+path:
+    tmp: '/tmp/dumper/%Y%m%d/' #
+    users: '/var/www/' #
+    root: '/root/' #
+    log: '/var/log/' #
+    etc: '/etc/' #
+
+#
+storages:
+    YandexDisk:
+        token: 'AQAAAAABEJ2-AAVH0EIr79Yz4E5dpd-7nhV1W18' #
+        path: 'disk:/Dumper/%Y%m%d/' #
+        expires: *main.expires #
