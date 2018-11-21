@@ -78,6 +78,9 @@ class Backup
         //
         $storages = [];
         foreach ($this->config['storages'] as $class => $config) {
+            if (!class_exists("\Gvozdb\Dumper\Storage\\{$class}")) {
+                continue;
+            }
             $storage = new \ReflectionClass("\Gvozdb\Dumper\Storage\\{$class}");
             $storages[$class] = $storage->newInstance($config);
             unset($storage);

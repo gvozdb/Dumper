@@ -1,12 +1,12 @@
 {
   "name": "gvozdb/dumper",
-  "type": "library",
   "description": "...",
   "keywords": [
     "gvozdb",
     "dumper",
     "backup"
   ],
+  "type": "library",
   "license": "MIT",
   "homepage": "https://github.com/gvozdb/dumper",
   "authors": [

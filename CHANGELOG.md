@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.4] - 2018-11-21
+
+* Added **class_exists** for storage in Dumper\Backup
+* Changed README.md
+
 ## [0.1.3] - 2018-11-07
 
 * Fixed composer.json, changed version of arhitector/yandex to ~2.0
