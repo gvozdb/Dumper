@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.5] - 2019-05-21
+
+* Added param **users** for **Backup::run()**
+
 ## [0.1.4] - 2018-11-21
 
 * Added **class_exists** for storage in Dumper\Backup
@@ -7,11 +11,11 @@
 
 ## [0.1.3] - 2018-11-07
 
-* Fixed composer.json, changed version of arhitector/yandex to ~2.0
+* Fixed composer.json, changed version of `arhitector/yandex` to ~2.0
 
 ## [0.1.2] - 2018-11-07
 
-* Fixed composer.json, added property "prefer-stable"
+* Fixed composer.json, added property `prefer-stable`
 
 ## [0.1.1] - 2018-11-07
 

@@ -26,8 +26,11 @@ class Backup
     }
 
     /**
+     * @param array $users
+     *
+     * @throws \ReflectionException
      */
-    public function run()
+    public function run(array $users = [])
     {
         $tasks = [];
         $prefix = $this->config['main']['prefix'];
@@ -35,7 +38,7 @@ class Backup
         //
         if ($dir = scandir($this->config['path']['users'])) {
             foreach ($dir as $k) {
-                if (in_array($k, ['.', '..'])) {
+                if (in_array($k, ['.', '..']) || (!empty($users) && !in_array($k, $users))) {
                     continue;
                 }
                 $path = $this->config['path']['users'] . $k;
