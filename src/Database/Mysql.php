@@ -20,6 +20,7 @@ class Mysql extends AbstractDatabase
     }
 
     /**
+     * @return mixed|void
      */
     public function export()
     {

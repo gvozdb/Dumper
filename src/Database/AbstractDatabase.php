@@ -48,5 +48,8 @@ abstract class AbstractDatabase
         $this->filepath = $filepath;
     }
 
+    /**
+     * @return mixed
+     */
     abstract public function export();
 }

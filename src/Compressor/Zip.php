@@ -20,7 +20,7 @@ class Zip extends AbstractCompressor
     }
 
     /**
-     *
+     * @return mixed|void
      */
     public function compress()
     {
@@ -45,7 +45,7 @@ class Zip extends AbstractCompressor
     }
 
     /**
-     *
+     * @return array|mixed|string
      */
     protected function excludePrepare()
     {

@@ -4,7 +4,9 @@ namespace Gvozdb\Dumper;
 
 class Backup
 {
-    /** @var array $config */
+    /**
+     * @var array $config
+     */
     protected $config = [];
 
     /**
@@ -38,10 +40,12 @@ class Backup
         //
         if ($dir = scandir($this->config['path']['users'])) {
             foreach ($dir as $k) {
-                if (in_array($k, ['.', '..']) || (!empty($users) && !in_array($k, $users))) {
+                if (in_array($k, ['.', '..'], true) || (!empty($users) && !in_array($k, $users, true))) {
                     continue;
                 }
+
                 $path = $this->config['path']['users'] . $k;
+
                 $config = new Config\Load($path . '/dumper.yaml', [
                     'src' => $path,
                     'dest' => $this->config['path']['tmp'] . $prefix . 'www-' . $k,

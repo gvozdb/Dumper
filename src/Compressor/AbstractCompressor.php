@@ -49,7 +49,13 @@ abstract class AbstractCompressor
         $this->filepath = $filepath;
     }
 
+    /**
+     * @return mixed
+     */
     abstract public function compress();
 
+    /**
+     * @return mixed
+     */
     abstract protected function excludePrepare();
 }

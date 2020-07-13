@@ -70,6 +70,8 @@ abstract class AbstractPath
      * @param string $src
      * @param string $dest
      * @param array  $exclude
+     *
+     * @throws \Exception
      */
     protected function compress($src, $dest, array $exclude = [])
     {
