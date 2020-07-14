@@ -20,11 +20,12 @@ class Mysql extends AbstractDatabase
     }
 
     /**
-     * @return mixed|void
+     * @return void|bool
+     *
+     * @throws \Exception
      */
     public function export()
     {
-        //
         foreach (['host', 'name', 'user', 'pass'] as $k) {
             if (empty($this->config[$k])) {
                 return;
@@ -48,9 +49,14 @@ class Mysql extends AbstractDatabase
             '>',
             $dest,
         ]);
-        $output = shell_exec($command);
+        $result = shell_exec($command);
 
         //
-        $this->setFilePath(file_exists($dest) ? $dest : null);
+        if (!file_exists($dest)) {
+            throw new \Exception("It was not possible to database dump `{$this->config['name']}`.");
+        }
+        $this->setFilePath($dest);
+
+        return true;
     }
 }

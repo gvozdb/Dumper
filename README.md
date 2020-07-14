@@ -31,10 +31,12 @@ try {
 ### config.yaml
 Конфигурационный файл приложения.
 ```yaml
+#
 main:
     prefix: "%Y%m%d-" #
     expires: &main.expires 4 #
     clean_logs: true #
+
 #
 path:
     tmp: '/tmp/dumper/%Y%m%d/' #
@@ -42,12 +44,54 @@ path:
     root: '/root/' #
     log: '/var/log/' #
     etc: '/etc/' #
+
 #
 storages:
+    # Upload to YandexDisk
     YandexDisk:
-        token: 'AQAAAAABEJ2-AAVH0ERr79Yz4E5dpd-7nhV1W18' #
-        path: 'disk:/Dumper/%Y%m%d/' #
+        token: 'AQAAAAABEJ2-AAVH0EIr79Yz4E5dpd-7nhV1W18' #
+        path: 'disk:/Dumper/ServerIP/%Y%m%d/' #
         expires: *main.expires #
+
+#
+logs:
+    enabled: true #
+    notify:
+        # Print to console
+        Console:
+            path: 'php://stdout' #
+            #level: 'info' #
+            #format: "[%datetime%] [%level_name%] > %message%\n" #
+            #dateFormat: 'd.m.Y H:i:s' #
+
+        # Write to file
+        File:
+            path: './log/%Y%m%d.log' #
+            #level: 'info' #
+            #format: "[%datetime%] [%level_name%] > %message%\n" #
+            #dateFormat: 'd.m.Y H:i:s' #
+
+        # Send to email
+        Email:
+            host: '' #
+            port: 465 #
+            encryption: 'ssl' #
+            username: '' #
+            password: '' #
+            subject: '[%d.%m.%Y] Dumper Report' #
+            from: '' #
+            to: '' #
+            #level: 'info' #
+            #format: "[%datetime%] [%level_name%] > %message%\n" #
+            dateFormat: 'H:i:s' #
+
+        # Send to telegram chat
+        Telegram:
+            token: '' #
+            chat: '' #
+            #level: 'info' #
+            #format: "[%datetime%] [%level_name%] > %message%\n" #
+            dateFormat: 'H:i:s' #
 ```
 Поместить в директорию с cron.php
 

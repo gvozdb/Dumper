@@ -2,12 +2,17 @@
 
 namespace Gvozdb\Dumper\Path;
 
+use Gvozdb\Dumper\Backup;
 use Gvozdb\Dumper\Storage;
 use Gvozdb\Dumper\Database;
 use Gvozdb\Dumper\Compressor;
 
 abstract class AbstractPath
 {
+    /**
+     * @var Backup $dumper
+     */
+    protected $dumper;
     /**
      * @var array $config
      */
@@ -18,12 +23,15 @@ abstract class AbstractPath
     protected $files = [];
 
     /**
+     * @param Backup $dumper
      * @param array $config
      *
      * @throws \Exception
      */
-    public function __construct(array $config = [])
+    public function __construct(Backup $dumper, array $config = [])
     {
+        $this->dumper = $dumper;
+
         $this->config = array_merge([
             'enabled' => false,
             'src' => null,
@@ -33,7 +41,7 @@ abstract class AbstractPath
         //
         foreach (['src', 'dest'] as $k) {
             if (empty($this->config[$k])) {
-                throw new \Exception('Path config bad.');
+                throw new \Exception("Incorrect config for `{$this->config['key']}`. " . print_r($this->config, 1));
             }
         }
 
@@ -46,101 +54,132 @@ abstract class AbstractPath
     }
 
     /**
-     * @param array|Storage\AbstractStorage $storages
-     *
      * @throws \Exception
      */
-    public function run(array $storages)
+    public function run()
     {
-        $this->compress($this->config['src'], $this->config['dest'], ($this->config['exclude'] ?: []));
+        $this->compress();
         $this->database();
-        $this->upload($storages);
+        $this->upload();
         $this->clean();
     }
 
     /**
-     *
+     * @return bool
      */
-    public function isEnabled()
+    public function enabled()
     {
-        return $this->config['enabled'];
+        foreach (['enabled', 'src', 'dest'] as $k) {
+            if (empty($this->config[$k])) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
-     * @param string $src
-     * @param string $dest
-     * @param array  $exclude
+     * @param null|string $src
+     * @param null|string $dest
+     * @param array $exclude
+     *
+     * @return void
      *
      * @throws \Exception
      */
-    protected function compress($src, $dest, array $exclude = [])
+    protected function compress($src = null, $dest = null, array $exclude = [])
     {
-        //
-        $compressor = new Compressor\Zip([
-            'src' => $src,
-            'dest' => $dest,
-            'exclude' => $exclude,
-        ]);
-        $compressor->compress();
-
-        //
-        if ($filepath = $compressor->getFilePath()) {
-            $this->files[$filepath] = false;
+        if (empty($src)) {
+            $src = $this->config['src'];
+            $dest = $this->config['dest'];
+            $exclude = $this->config['exclude'] ?: [];
         }
-        unset($compressor, $filepath);
+
+        try {
+            $compressor = new Compressor\Zip([
+                'key' => $this->config['key'],
+                'src' => $src,
+                'dest' => $dest,
+                'exclude' => $exclude,
+            ]);
+            if ($compressor->compress() === true) {
+                $src_type = is_dir($src) ? 'directory' : 'file';
+                $this->dumper->log->info("Successfully compressed {$src_type} `{$src}`.");
+            }
+
+            //
+            if ($filepath = $compressor->getFilePath()) {
+                $this->files[$filepath] = false;
+            }
+            unset($compressor, $filepath);
+        } catch (\Exception $e) {
+            $this->dumper->log->error($e->getMessage());
+        }
     }
 
     /**
+     * @return void
      *
+     * @throws \Exception
      */
     protected function database()
     {
-        //
-        $config = $this->config['database'] ?: [];
+        $config = @$this->config['database'] ?: [];
         if (empty($config['type'])) {
             return;
         }
 
-        //
-        $class = ucfirst(strtolower($config['type']));
-        if (!class_exists("\Gvozdb\Dumper\Database\\{$class}")) {
-            return;
+        try {
+            $class = ucfirst(strtolower($config['type']));
+            if (!class_exists("\Gvozdb\Dumper\Database\\{$class}")) {
+                throw new \Exception("Database handler `{$config['type']}` not found.");
+            }
+
+            $database = new \ReflectionClass("\Gvozdb\Dumper\Database\\{$class}");
+            $database = $database->newInstance(array_merge($config, [
+                'key' => $this->config['key'],
+                'dest' => $this->config['dest'],
+            ]));
+            if ($database->export() === true) {
+                $this->dumper->log->info("Successfully database dump for `{$this->config['key']}` user.");
+            }
+
+            //
+            if ($filepath = $database->getFilePath()) {
+                $this->compress($filepath, $filepath);
+                @unlink($filepath);
+            }
+
+            unset($database, $filepath, $class, $config);
+        } catch (\Exception $e) {
+            $this->dumper->log->error($e->getMessage());
         }
-
-        //
-        /** @var Database\AbstractDatabase $database */
-        $database = new \ReflectionClass("\Gvozdb\Dumper\Database\\{$class}");
-        $database = $database->newInstance(array_merge($config, [
-            'dest' => $this->config['dest'],
-        ]));
-        $database->export();
-
-        //
-        if ($filepath = $database->getFilePath()) {
-            $this->compress($filepath, $filepath);
-            @unlink($filepath);
-        }
-
-        unset($database, $filepath, $class, $config);
     }
 
     /**
-     * @param array|Storage\AbstractStorage $storages
+     * @throws \Exception
      */
-    protected function upload($storages)
+    protected function upload()
     {
-        if (empty($storages) || empty($this->files)) {
+        if (empty($this->dumper->storages) || empty($this->files)) {
             return;
         }
+
+        $storages = $this->dumper->storages;
         if (!is_array($storages)) {
             $storages = [$storages];
         }
 
         foreach ($this->files as $filepath => &$status) {
-            /** @var Storage\AbstractStorage $storage */
-            foreach ($storages as $storage) {
-                if ($storage->upload($filepath)) {
-                    $status = true;
+            /** @var Storage\AbstractStorage $storageInstance */
+            foreach ($storages as $storageClass => $storageInstance) {
+                try {
+                    if ($storageInstance->upload($filepath)) {
+                        $status = true;
+                        $this->dumper->log->info("Successfully uploaded file `{$filepath}` to the storage `{$storageClass}`.");
+                    }
+                } catch (\Exception $e) {
+                    $this->dumper->log->error("Failed uploading file `{$filepath}` to the storage `{$storageClass}`. Message: " . $e->getMessage());
                 }
             }
         }
@@ -163,10 +202,10 @@ abstract class AbstractPath
     }
 
     /**
-     * Чистит папку в файловой системе
+     * Clears the folder on the file system
      *
      * @param string $path
-     * @param bool   $remove_self
+     * @param bool $remove_self
      */
     static public function cleanDir($path, $remove_self = false)
     {

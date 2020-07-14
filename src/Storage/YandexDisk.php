@@ -37,21 +37,44 @@ class YandexDisk extends AbstractStorage
     {
         parent::__construct($config);
 
-        //
-        if (empty($this->config['token'])) {
-            throw new \Exception('Token is empty.');
+        try {
+            $this->client = new \Arhitector\Yandex\Disk($this->config['token']);
+
+            // Checking authorization status
+            $this->getPath();
+        } catch (\Exception $e) {
+            throw new \Exception($e->getMessage());
         }
-        $this->client = new \Arhitector\Yandex\Disk($this->config['token']);
+    }
+
+    /**
+     * @return bool
+     */
+    public function enabled()
+    {
+        if (($flag = parent::enabled()) === true) {
+            foreach (['token'] as $k) {
+                if (empty($this->config[$k])) {
+                    $flag = false;
+                }
+            }
+        }
+
+        return $flag;
     }
 
     /**
      * @param string $filepath
      *
-     * @return bool
+     * @return void|bool
+     *
      * @throws \Exception
      */
     public function upload($filepath)
     {
+        if ($this->enabled() === false) {
+            return;
+        }
         if (empty($filepath)) {
             return false;
         }
@@ -76,56 +99,79 @@ class YandexDisk extends AbstractStorage
     }
 
     /**
+     * @return void|bool
      *
+     * @throws \Exception
      */
     public function clean()
     {
-        // Удаляем устаревшие бекапы
-        if ($expires_time = (86400 * $this->config['expires'])) {
-            $expires_time = time() - $expires_time;
-            $parent = $this->client->getResource($this->getParentPath());
-            $childs = $parent->getIterator();
+        if ($this->enabled() === false) {
+            return;
+        }
 
-            /** @var \Arhitector\Yandex\Disk\Resource\Closed $child */
-            foreach ($childs['items'] as $child) {
-                $created_time = strtotime(date('Y-m-d', strtotime($child->get('created'))));
-                if ($expires_time > $created_time) {
-                    $child->delete(true);
+        try {
+            if ($expires_time = (86400 * $this->config['expires'])) {
+                $expires_time = time() - $expires_time;
+                $parent = $this->client->getResource($this->getParentPath());
+                $childs = $parent->getIterator();
+
+                /** @var \Arhitector\Yandex\Disk\Resource\Closed $child */
+                foreach ($childs['items'] as $child) {
+                    $created_time = strtotime(date('Y-m-d', strtotime($child->get('created'))));
+                    if ($expires_time > $created_time) {
+                        $child->delete(true);
+                    }
                 }
             }
+        } catch (\Exception $e) {
+            throw new \Exception($e->getMessage());
         }
+
+        return true;
     }
 
     /**
      * @return string
+     *
+     * @throws \Exception
      */
     protected function getPath()
     {
-        $path = 'disk:/';
-        $folders = explode('/', $this->config['path']);
-        foreach ($folders as $v) {
-            if (empty($v) || $v == 'disk:') {
-                continue;
+        try {
+            $path = 'disk:/';
+            $folders = explode('/', $this->config['path']);
+            foreach ($folders as $v) {
+                if (empty($v) || $v == 'disk:') {
+                    continue;
+                }
+                $path .= $v . '/';
+                $resource = $this->client->getResource($path);
+                if (!$resource->has()) {
+                    $resource->create();
+                }
+                unset($resource);
             }
-            $path .= $v . '/';
-            $resource = $this->client->getResource($path);
-            if (!$resource->has()) {
-                $resource->create();
-            }
-            unset($resource);
+            unset($folders);
+            $this->config['path'] = $path;
+        } catch (\Exception $e) {
+            throw new \Exception($e->getMessage());
         }
-        unset($folders);
-
-        $this->config['path'] = $path;
 
         return $this->config['path'];
     }
 
     /**
      * @return string
+     *
+     * @throws \Exception
      */
     protected function getParentPath()
     {
-        return dirname($this->getPath()) . '/';
+        $path = $this->getPath();
+        if (is_string($path)) {
+            $path = dirname($path) . '/';
+        }
+
+        return $path;
     }
 }

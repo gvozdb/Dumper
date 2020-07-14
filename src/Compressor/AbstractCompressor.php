@@ -9,7 +9,7 @@ abstract class AbstractCompressor
      */
     protected $config = [];
     /**
-     * @var string $filepath
+     * @var null|string $filepath
      */
     protected $filepath;
 
@@ -28,7 +28,7 @@ abstract class AbstractCompressor
         //
         foreach (['src', 'dest'] as $k) {
             if (empty($this->config[$k])) {
-                throw new \Exception('Compressor config bad.');
+                throw new \Exception("Incorrect compressor config for `{$this->config['key']}`. " . print_r($this->config, 1));
             }
         }
     }
@@ -50,12 +50,12 @@ abstract class AbstractCompressor
     }
 
     /**
-     * @return mixed
+     * @return void|bool
      */
     abstract public function compress();
 
     /**
-     * @return mixed
+     * @return string
      */
     abstract protected function excludePrepare();
 }

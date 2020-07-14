@@ -5,12 +5,22 @@ namespace Gvozdb\Dumper;
 class Backup
 {
     /**
+     * @var Logger\Handler $log
+     */
+    public $log;
+    /**
+     * @var array $storages
+     */
+    public $storages = [];
+    /**
      * @var array $config
      */
     protected $config = [];
 
     /**
      * @param Config\Load $config
+     *
+     * @throws \Exception
      */
     public function __construct(Config\Load $config)
     {
@@ -24,16 +34,25 @@ class Backup
         if (!file_exists($this->config['path']['tmp'])) {
             @mkdir($this->config['path']['tmp'], 0755, true);
         }
-        // print_r($this->config);
+
+        //
+        $this->log = new Logger\Handler($this->config['logs']);
     }
 
     /**
      * @param array $users
      *
-     * @throws \ReflectionException
+     * @return void|bool
+     *
+     * @throws \Exception
      */
     public function run(array $users = [])
     {
+        if (!is_dir($this->config['path']['users'])) {
+            $this->log->emergency('Directory with users has been not found.');
+            return false;
+        }
+
         $tasks = [];
         $prefix = $this->config['main']['prefix'];
 
@@ -46,73 +65,112 @@ class Backup
 
                 $path = $this->config['path']['users'] . $k;
 
-                $config = new Config\Load($path . '/dumper.yaml', [
-                    'src' => $path,
-                    'dest' => $this->config['path']['tmp'] . $prefix . 'www-' . $k,
-                ]);
-                $config = $config->toArray();
-
-                $tmp = new Path\User($config);
-                if ($tmp->isEnabled()) {
-                    $tasks[] = $tmp;
+                try {
+                    $config = new Config\Load($path . '/dumper.yaml', [
+                        'key' => $k,
+                        'src' => $path,
+                        'dest' => $this->config['path']['tmp'] . $prefix . 'www-' . $k,
+                    ]);
+                    $config = $config->toArray();
+                } catch (\Exception $e) {
+                    $this->log->error("Could not read user config `{$k}`. Message: " . $e->getMessage());
+                    continue;
                 }
-                unset($tmp, $config, $path);
+
+                try {
+                    $task = new Path\User($this, $config);
+                    if ($task->enabled()) {
+                        $tasks[] = $task;
+                    }
+                    unset($task, $config, $path);
+                } catch (\Exception $e) {
+                    $this->log->error($e->getMessage());
+                    continue;
+                }
             }
         }
         unset($dir);
 
         //
-        if (!empty($this->config['path']['log'])) {
-            $tasks[] = new Path\Log([
-                'enabled' => true,
-                'clean_logs' => $this->config['main']['clean_logs'],
-                'src' => $this->config['path']['log'],
-                'dest' => $this->config['path']['tmp'] . $prefix . 'log',
-            ]);
-        }
-
-        //
         foreach (['root', 'etc'] as $k) {
             if (!empty($this->config['path'][$k])) {
-                $tasks[] = new Path\System([
-                    'enabled' => true,
-                    'src' => $this->config['path'][$k],
-                    'dest' => $this->config['path']['tmp'] . $prefix . $k,
-                ]);
+                try {
+                    $tasks[] = new Path\System($this, [
+                        'key' => $k,
+                        'src' => $this->config['path'][$k],
+                        'dest' => $this->config['path']['tmp'] . $prefix . $k,
+                        'enabled' => true,
+                    ]);
+                } catch (\Exception $e) {
+                    $this->log->error($e->getMessage());
+                }
             }
         }
 
         //
-        $storages = [];
+        if (!empty($this->config['path']['log'])) {
+            try {
+                $tasks[] = new Path\Log($this, [
+                    'key' => 'log',
+                    'src' => $this->config['path']['log'],
+                    'dest' => $this->config['path']['tmp'] . $prefix . 'log',
+                    'clean_logs' => $this->config['main']['clean_logs'],
+                    'enabled' => true,
+                ]);
+            } catch (\Exception $e) {
+                $this->log->error($e->getMessage());
+            }
+        }
+
+        //
         foreach ($this->config['storages'] as $class => $config) {
             if (!class_exists("\Gvozdb\Dumper\Storage\\{$class}")) {
+                $this->log->error("Storage handler `{$class}` not found.");
                 continue;
             }
-            $storage = new \ReflectionClass("\Gvozdb\Dumper\Storage\\{$class}");
-            $storages[$class] = $storage->newInstance($config);
-            unset($storage);
+            try {
+                $storage = new \ReflectionClass("\Gvozdb\Dumper\Storage\\{$class}");
+                $storageInstance = $storage->newInstance($config);
+                if ($storageInstance->enabled()) {
+                    $this->storages[$class] = $storageInstance;
+                }
+            } catch (\Exception $e) {
+                $this->log->error("It was not possible to initialize the storage instance `{$class}`. Message: " . $e->getMessage());
+            }
         }
+        unset($class, $config, $storage, $storageInstance);
 
         //
         /** @var Path\AbstractPath $task */
         foreach ($tasks as $task) {
-            $task->run($storages);
+            $task->run();
         }
 
         //
-        $this->clean($storages);
+        $this->clean();
+
+        //
+        $this->log->bufferReset();
+
+        return true;
     }
 
     /**
-     * @param array $storages
+     *
      */
-    protected function clean($storages = [])
+    protected function clean()
     {
         //
-        if (!empty($storages)) {
-            /** @var Storage\AbstractStorage $storage */
-            foreach ($storages as $storage) {
-                $storage->clean();
+        if (!empty($this->storages)) {
+            /** @var Storage\AbstractStorage $storageInstance */
+            foreach ($this->storages as $storageClass => $storageInstance) {
+                try {
+                    if ($storageInstance->clean() === true) {
+                        $this->log->info("Successfully cleaning old backups in the storage `{$storageClass}`.");
+                    }
+                } catch (\Exception $e) {
+                    $this->log->error("Could not remove old backups in the storage `{$storageClass}`. Message: " . $e->getMessage());
+                }
             }
         }
 

@@ -9,7 +9,7 @@ abstract class AbstractDatabase
      */
     protected $config = [];
     /**
-     * @var string $filepath
+     * @var null|string $filepath
      */
     protected $filepath;
 
@@ -27,7 +27,7 @@ abstract class AbstractDatabase
         //
         foreach (['dest'] as $k) {
             if (empty($this->config[$k])) {
-                throw new \Exception('Database config bad.');
+                throw new \Exception("Incorrect database config for `{$this->config['key']}`. " . print_r($this->config, 1));
             }
         }
     }
@@ -49,7 +49,7 @@ abstract class AbstractDatabase
     }
 
     /**
-     * @return mixed
+     * @return void|bool
      */
     abstract public function export();
 }

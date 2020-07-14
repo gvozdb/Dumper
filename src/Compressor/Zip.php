@@ -20,7 +20,9 @@ class Zip extends AbstractCompressor
     }
 
     /**
-     * @return mixed|void
+     * @return void|bool
+     *
+     * @throws \Exception
      */
     public function compress()
     {
@@ -38,14 +40,19 @@ class Zip extends AbstractCompressor
             $this->config['src'],
             $this->excludePrepare(),
         ]);
-        $output = shell_exec($command);
+        $result = shell_exec($command);
 
         //
-        $this->setFilePath(file_exists($dest) ? $dest : null);
+        if (!file_exists($dest)) {
+            throw new \Exception("It was not possible to pack the source `{$this->config['src']}`.");
+        }
+        $this->setFilePath($dest);
+
+        return true;
     }
 
     /**
-     * @return array|mixed|string
+     * @return string
      */
     protected function excludePrepare()
     {

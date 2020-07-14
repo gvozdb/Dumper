@@ -8,6 +8,10 @@ abstract class AbstractStorage
      * @var array $config
      */
     protected $config = [];
+    /**
+     * @var string $message
+     */
+    public $message;
 
     /**
      * @param array $config
@@ -17,27 +21,35 @@ abstract class AbstractStorage
     public function __construct(array $config = [])
     {
         $this->config = array_merge([
-            'path' => null,
+            'path' => '',
         ], $config);
 
-        //
+        $this->config['path'] = strftime(@$this->config['path'] ?: '');
+    }
+
+    /**
+     * @return bool
+     */
+    public function enabled()
+    {
         foreach (['path'] as $k) {
             if (empty($this->config[$k])) {
-                throw new \Exception('Storage config bad.');
+                return false;
             }
         }
-        $this->config['path'] = strftime($this->config['path']);
+
+        return true;
     }
 
     /**
      * @param $filepath
      *
-     * @return bool
+     * @return void|bool
      */
     abstract public function upload($filepath);
 
     /**
-     * @return mixed
+     * @return void|bool
      */
     abstract public function clean();
 
