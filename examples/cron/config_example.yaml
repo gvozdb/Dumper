@@ -1,5 +1,6 @@
 #
 main:
+    archive_password: '' #
     prefix: "%Y%m%d-" #
     expires: &main.expires 4 #
     clean_logs: true #

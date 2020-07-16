@@ -30,6 +30,14 @@ class Load
     }
 
     /**
+     * @return array
+     */
+    public function toArray()
+    {
+        return $this->config;
+    }
+
+    /**
      * @param string $root
      * @param mixed  $default
      *
@@ -37,14 +45,8 @@ class Load
      */
     public function getNode($root, $default = [])
     {
-        return isset($this->config[$root]) ? $this->config[$root] : $default;
-    }
-
-    /**
-     * @return array
-     */
-    public function toArray()
-    {
-        return $this->config;
+        return isset($this->config[$root])
+            ? $this->config[$root]
+            : $default;
     }
 }

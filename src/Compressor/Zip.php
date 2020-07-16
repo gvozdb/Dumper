@@ -28,18 +28,22 @@ class Zip extends AbstractCompressor
     {
         //
         $dest = $this->config['dest'];
-        if (!preg_match('/\.zip$/i', $dest)) {
+        if (!preg_match('~\.zip$~ui', $dest)) {
             $dest .= '.zip';
         }
 
         //
-        $command = join(' ', [
-            'zip',
-            '-r',
-            $dest,
-            $this->config['src'],
-            $this->excludePrepare(),
-        ]);
+        $arguments = ['zip'];
+        if (!empty($this->config['password'])) {
+            $arguments[] = '-P ' . $this->config['password'];
+        }
+        $arguments[] = '-r';
+        $arguments[] = $dest;
+        $arguments[] = $this->config['src'];
+        $arguments[] = $this->excludePrepare();
+
+        //
+        $command = join(' ', $arguments);
         $result = shell_exec($command);
 
         //

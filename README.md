@@ -33,6 +33,7 @@ try {
 ```yaml
 #
 main:
+    archive_password: "" #
     prefix: "%Y%m%d-" #
     expires: &main.expires 4 #
     clean_logs: true #
@@ -99,6 +100,7 @@ logs:
 Конфигурационный файл юзера.
 ```yaml
 enabled: true # включить
+archive_password: '' #
 #
 database:
     type: 'mysql'

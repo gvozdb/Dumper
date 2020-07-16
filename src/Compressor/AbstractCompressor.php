@@ -21,6 +21,7 @@ abstract class AbstractCompressor
     public function __construct(array $config = [])
     {
         $this->config = array_merge([
+            'password' => '',
             'src' => null,
             'dest' => null,
         ], $config);

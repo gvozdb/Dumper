@@ -39,7 +39,7 @@ class Mysql extends AbstractDatabase
         }
 
         //
-        $command = join(' ', [
+        $arguments = [
             'mysqldump',
             '-h ' . $this->config['host'],
             '--skip-lock-tables',
@@ -48,7 +48,10 @@ class Mysql extends AbstractDatabase
             $this->config['name'],
             '>',
             $dest,
-        ]);
+        ];
+
+        //
+        $command = join(' ', $arguments);
         $result = shell_exec($command);
 
         //

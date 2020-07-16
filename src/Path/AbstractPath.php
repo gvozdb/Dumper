@@ -36,6 +36,7 @@ abstract class AbstractPath
             'enabled' => false,
             'src' => null,
             'dest' => null,
+            'archive_password' => '',
         ], $config);
 
         //
@@ -101,6 +102,7 @@ abstract class AbstractPath
                 'src' => $src,
                 'dest' => $dest,
                 'exclude' => $exclude,
+                'password' => $this->config['archive_password'],
             ]);
             if ($compressor->compress() === true) {
                 $src_type = is_dir($src) ? 'directory' : 'file';

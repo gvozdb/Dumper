@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1] - 2020-07-16
+
+* Added archive password
+* Added start and end notifications
+* Changed README.md
+
+
 ## [0.2.0] - 2020-07-14
 
 * Refactoring

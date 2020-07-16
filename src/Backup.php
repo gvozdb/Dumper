@@ -53,6 +53,8 @@ class Backup
             return false;
         }
 
+        $this->log->notice('Dumper is on!');
+
         $tasks = [];
         $prefix = $this->config['main']['prefix'];
 
@@ -70,6 +72,7 @@ class Backup
                         'key' => $k,
                         'src' => $path,
                         'dest' => $this->config['path']['tmp'] . $prefix . 'www-' . $k,
+                        'archive_password' => @$this->config['main']['archive_password'] ?: '',
                     ]);
                     $config = $config->toArray();
                 } catch (\Exception $e) {
@@ -96,10 +99,11 @@ class Backup
             if (!empty($this->config['path'][$k])) {
                 try {
                     $tasks[] = new Path\System($this, [
+                        'enabled' => true,
                         'key' => $k,
                         'src' => $this->config['path'][$k],
                         'dest' => $this->config['path']['tmp'] . $prefix . $k,
-                        'enabled' => true,
+                        'archive_password' => @$this->config['main']['archive_password'] ?: '',
                     ]);
                 } catch (\Exception $e) {
                     $this->log->error($e->getMessage());
@@ -111,11 +115,12 @@ class Backup
         if (!empty($this->config['path']['log'])) {
             try {
                 $tasks[] = new Path\Log($this, [
+                    'enabled' => true,
                     'key' => 'log',
                     'src' => $this->config['path']['log'],
                     'dest' => $this->config['path']['tmp'] . $prefix . 'log',
+                    'archive_password' => @$this->config['main']['archive_password'] ?: '',
                     'clean_logs' => $this->config['main']['clean_logs'],
-                    'enabled' => true,
                 ]);
             } catch (\Exception $e) {
                 $this->log->error($e->getMessage());
@@ -146,10 +151,10 @@ class Backup
             $task->run();
         }
 
-        //
         $this->clean();
 
-        //
+        $this->log->notice('Dumper is off!');
+
         $this->log->bufferReset();
 
         return true;
