@@ -21,6 +21,10 @@ abstract class AbstractPath
      * @var array $files
      */
     protected $files = [];
+    /**
+     * @var array $storages
+     */
+    protected $storages = [];
 
     /**
      * @param Backup $dumper
@@ -37,6 +41,7 @@ abstract class AbstractPath
             'src' => null,
             'dest' => null,
             'archive_password' => '',
+            'storages' => [],
         ], $config);
 
         //
@@ -102,7 +107,7 @@ abstract class AbstractPath
                 'src' => $src,
                 'dest' => $dest,
                 'exclude' => $exclude,
-                'password' => $this->config['archive_password'],
+                'password' => @$this->config['archive_password'] ?: '',
             ]);
             if ($compressor->compress() === true) {
                 $src_type = is_dir($src) ? 'directory' : 'file';
@@ -167,11 +172,29 @@ abstract class AbstractPath
             return;
         }
 
+        //
         $storages = $this->dumper->storages;
         if (!is_array($storages)) {
             $storages = [$storages];
         }
+        foreach ($this->config['storages'] as $class => $config) {
+            if (!class_exists("\Gvozdb\Dumper\Storage\\{$class}")) {
+                $this->dumper->log->error("Storage handler `{$class}` not found.");
+                continue;
+            }
+            try {
+                $storage = new \ReflectionClass("\Gvozdb\Dumper\Storage\\{$class}");
+                $storageInstance = $storage->newInstance($config);
+                if ($storageInstance->enabled()) {
+                    $this->storages[$class] = $storages[$class] = $storageInstance;
+                }
+            } catch (\Exception $e) {
+                $this->dumper->log->error("It was not possible to initialize the storage instance `{$class}` for `{$this->config['key']}` user. Message: " . $e->getMessage());
+            }
+        }
+        unset($class, $config, $storage, $storageInstance);
 
+        //
         foreach ($this->files as $filepath => &$status) {
             /** @var Storage\AbstractStorage $storageInstance */
             foreach ($storages as $storageClass => $storageInstance) {
@@ -193,12 +216,26 @@ abstract class AbstractPath
      */
     protected function clean()
     {
-        if (empty($this->files)) {
-            return;
+        //
+        if (!empty($this->storages)) {
+            /** @var Storage\AbstractStorage $storageInstance */
+            foreach ($this->storages as $storageClass => $storageInstance) {
+                try {
+                    if ($storageInstance->clean() === true) {
+                        $this->dumper->log->info("Successfully cleaning old backups in the storage `{$storageClass}` for `{$this->config['key']}` user.");
+                    }
+                } catch (\Exception $e) {
+                    $this->dumper->log->error("Could not remove old backups in the storage `{$storageClass}` for `{$this->config['key']}` user. Message: " . $e->getMessage());
+                }
+            }
         }
-        foreach ($this->files as $filepath => $status) {
-            if ($status === true) {
-                @unlink($filepath);
+
+        // Remove temp files
+        if (!empty($this->files)) {
+            foreach ($this->files as $filepath => $status) {
+                if ($status === true) {
+                    @unlink($filepath);
+                }
             }
         }
     }

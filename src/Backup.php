@@ -36,7 +36,7 @@ class Backup
         }
 
         //
-        $this->log = new Logger\Handler($this->config['logs']);
+        $this->log = new Logger\Handler(@$this->config['logs'] ?: []);
     }
 
     /**
@@ -179,7 +179,7 @@ class Backup
             }
         }
 
-        // Удаляем временную папку
+        // Remove temp dir
         Path\AbstractPath::cleanDir($this->config['path']['tmp'], true);
     }
 }

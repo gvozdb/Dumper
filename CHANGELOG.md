@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.2] - 2021-05-05
+
+* Added storage support for single user
+* Fixed bug `Undefined index: logs`
+
+
 ## [0.2.1] - 2020-07-16
 
 * Added archive password
