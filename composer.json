@@ -19,7 +19,7 @@
   ],
   "require": {
     "php": ">=7.1.3",
-    "arhitector/yandex": "~2.0",
+    "arhitector/yandex": "2.0",
     "symfony/filesystem": "~3.4|~4.0",
     "symfony/yaml": "~3.4|~4.0",
     "symfony/console": "~3.4|~4.0",
