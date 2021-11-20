@@ -17,6 +17,7 @@ class Backup
      */
     protected $config = [];
 
+
     /**
      * @param Config\Load $config
      *
@@ -24,9 +25,23 @@ class Backup
      */
     public function __construct(Config\Load $config)
     {
-        $this->config = array_merge([
-            'prefix' => date('Ymd') . '-',
-        ], $config->toArray());
+        $config->setDefault([
+            'main.prefix' => '%Y%m%d-',
+            'main.progress_bar' => false,
+        ]);
+        $this->config = $config->toArray();
+
+        $this->config['compressor'] = @$this->config['compressor'] ?: [
+            'class' => 'zip',
+            'compress' => 7,
+            'split' => 0,
+            'password' => null,
+        ];
+        $this->config['compressor']['password'] = isset($this->config['compressor']['password'])
+            ? $this->config['compressor']['password']
+            : (@$this->config['main']['archive_password'] // @deprecated
+                ?: null);
+
         $this->config['main']['prefix'] = strftime($this->config['main']['prefix']);
 
         //
@@ -72,7 +87,7 @@ class Backup
                         'key' => $k,
                         'src' => $path,
                         'dest' => $this->config['path']['tmp'] . $prefix . 'www-' . $k,
-                        'archive_password' => @$this->config['main']['archive_password'] ?: '',
+                        'compressor' => $this->config['compressor'],
                     ]);
                     $config = $config->toArray();
                 } catch (\Exception $e) {
@@ -103,7 +118,7 @@ class Backup
                         'key' => $k,
                         'src' => $this->config['path'][$k],
                         'dest' => $this->config['path']['tmp'] . $prefix . $k,
-                        'archive_password' => @$this->config['main']['archive_password'] ?: '',
+                        'compressor' => $this->config['compressor'],
                     ]);
                 } catch (\Exception $e) {
                     $this->log->error($e->getMessage());
@@ -119,7 +134,7 @@ class Backup
                     'key' => 'log',
                     'src' => $this->config['path']['log'],
                     'dest' => $this->config['path']['tmp'] . $prefix . 'log',
-                    'archive_password' => @$this->config['main']['archive_password'] ?: '',
+                    'compressor' => $this->config['compressor'],
                     'clean_logs' => $this->config['main']['clean_logs'],
                 ]);
             } catch (\Exception $e) {
@@ -135,7 +150,7 @@ class Backup
             }
             try {
                 $storage = new \ReflectionClass("\Gvozdb\Dumper\Storage\\{$class}");
-                $storageInstance = $storage->newInstance($config);
+                $storageInstance = $storage->newInstance($this, $config);
                 if ($storageInstance->enabled()) {
                     $this->storages[$class] = $storageInstance;
                 }
@@ -160,6 +175,7 @@ class Backup
         return true;
     }
 
+
     /**
      *
      */
@@ -181,5 +197,31 @@ class Backup
 
         // Remove temp dir
         Path\AbstractPath::cleanDir($this->config['path']['tmp'], true);
+    }
+
+
+    /**
+     * Print progress bar
+     *
+     * @param int|float $actual
+     * @param int|float $total
+     * @param string $format
+     *
+     * @return int
+     */
+    public function progressBar($actual, $total, $format = '')
+    {
+        if (empty($this->config['main']['progress_bar'])) {
+            return false;
+        }
+
+        $width = 30;
+        $percent = floor(($actual * 100) / $total);
+        $bar_percent = ceil(($width * $percent) / 100);
+        $output = sprintf("%s%%[%s>%s] %s\r", $percent, str_repeat("=", $bar_percent), str_repeat(" ", $width - $bar_percent), $format);
+        // $output = str_pad($output, 160, ' ', STR_PAD_RIGHT);
+        fwrite(STDOUT, $output);
+
+        return $percent;
     }
 }

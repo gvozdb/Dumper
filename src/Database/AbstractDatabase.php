@@ -9,9 +9,10 @@ abstract class AbstractDatabase
      */
     protected $config = [];
     /**
-     * @var null|string $filepath
+     * @var null|string $file
      */
-    protected $filepath;
+    protected $file;
+
 
     /**
      * @param array $config
@@ -32,21 +33,24 @@ abstract class AbstractDatabase
         }
     }
 
+
     /**
      *
      */
-    public function getFilePath()
+    public function getFile()
     {
-        return $this->filepath;
+        return $this->file;
     }
 
+
     /**
-     * @param string $filepath
+     * @param string $file
      */
-    protected function setFilePath($filepath)
+    protected function setFile($file)
     {
-        $this->filepath = $filepath;
+        $this->file = $file;
     }
+
 
     /**
      * @return void|bool

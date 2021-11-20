@@ -17,35 +17,36 @@
 
 namespace Gvozdb\Dumper\Storage;
 
+use Gvozdb\Dumper\Backup;
+
 class YandexDisk extends AbstractStorage
 {
-    /**
-     * @var array $config
-     */
-    protected $config = [];
     /**
      * @var \Arhitector\Yandex\Disk $client
      */
     protected $client;
 
+
     /**
+     * @param Backup $dumper
      * @param array $config
      *
      * @throws \Exception
      */
-    public function __construct(array $config = [])
+    public function __construct(Backup $dumper, array $config = [])
     {
-        parent::__construct($config);
+        parent::__construct($dumper, $config);
 
         try {
             $this->client = new \Arhitector\Yandex\Disk($this->config['token']);
 
-            // Checking authorization status
+            // Check authorization status
             $this->getPath();
         } catch (\Exception $e) {
             throw new \Exception($e->getMessage());
         }
     }
+
 
     /**
      * @return bool
@@ -63,6 +64,7 @@ class YandexDisk extends AbstractStorage
         return $flag;
     }
 
+
     /**
      * @param string $filepath
      *
@@ -79,6 +81,7 @@ class YandexDisk extends AbstractStorage
             return false;
         }
 
+        // todo: сделать 2-4 попытки загрузить файл в облако, если с первой не получилось, ибо часто возникают ошибки `Service Unavailable`
         try {
             if (!$path = $this->getPath()) {
                 return false;
@@ -89,6 +92,14 @@ class YandexDisk extends AbstractStorage
             if ($resource->has()) {
                 $resource->delete(true);
             }
+
+            $resource->addListener(
+                'progress',
+                function (\League\Event\Event $event, $percent) use ($filename) {
+                    $this->dumper->progressBar($percent, 100, $filename);
+                }
+            );
+
             $resource->upload($filepath);
             unset($resource);
         } catch (\Exception $e) {
@@ -97,6 +108,7 @@ class YandexDisk extends AbstractStorage
 
         return true;
     }
+
 
     /**
      * @return void|bool
@@ -108,27 +120,82 @@ class YandexDisk extends AbstractStorage
         if ($this->enabled() === false) {
             return;
         }
+        $expires = $this->config['expires'];
 
         try {
-            if ($expires_time = (86400 * $this->config['expires'])) {
-                $expires_time = time() - $expires_time;
-                $parent = $this->client->getResource($this->getParentPath());
-                $childs = $parent->getIterator();
+            // Get a list of backup folders in the cloud
+            $childs = [];
+            /** @var \Arhitector\Yandex\Disk\Resource\Closed $resource */
+            $resources = $this->client->getResource($this->getParentPath())
+                ->setSort('created', true)
+                ->getIterator();
+            foreach ($resources['items'] as $resource) {
+                $childs[] = [
+                    'id' => $resource->get('resource_id'),
+                    'created' => $resource->get('created'),
+                ];
+            }
+            if (count($childs) > 1) {
+                // Collect a list of backup folder id's to keep
+                $ids = ['short' => [], 'long' => []];
+                $today_time = $this->getStartDayUtc(time()); // $childs[0]['created']
+                $last_time = $this->getStartDayUtc($childs[count($childs) - 1]['created']);
+                foreach (array_keys($ids) as $k) {
+                    $expires_time = $today_time - (86400 * $expires[$k . '_max_days']);
+                    $expires_max_items = ceil($expires[$k . '_max_days'] / $expires[$k . '_step']);
+                    foreach ($childs as $child) {
+                        if (in_array($child['id'], $ids['short'], true)) {
+                            continue;
+                        }
+                        $child_time = $this->getStartDayUtc($child['created']);
+                        $day_num = ($child_time - $last_time) / 86400;
 
-                /** @var \Arhitector\Yandex\Disk\Resource\Closed $child */
-                foreach ($childs['items'] as $child) {
-                    $created_time = strtotime(date('Y-m-d', strtotime($child->get('created'))));
-                    if ($expires_time > $created_time) {
-                        $child->delete(true);
+                        if ($today_time === $child_time || ($expires_time <= $child_time && ($day_num % $expires[$k . '_step']) === 0)) {
+                            $ids[$k][] = $child['id'];
+                        }
+                    }
+                    $ids[$k] = array_slice($ids[$k], 0, $expires_max_items);
+                }
+                $ids = array_unique(array_merge($ids['short'], $ids['long']));
+                $childs = array_values(
+                    array_map(
+                        function ($child) {
+                            return $child['id'];
+                        },
+                        array_filter($childs, function ($child) use ($ids) {
+                            return in_array($child['id'], $ids, true);
+                        })
+                    )
+                );
+
+                // Remove backup folders from the cloud that don't suit us
+                foreach ($resources['items'] as $resource) {
+                    if (!in_array($resource->get('resource_id'), $childs, true)) {
+                        $resource->delete(true);
                     }
                 }
             }
+
+            // if ($expires_time = (86400 * $this->config['expires'])) {
+            //     $expires_time = time() - $expires_time;
+            //     $parent = $this->client->getResource($this->getParentPath());
+            //     $childs = $parent->getIterator();
+            //
+            //     /** @var \Arhitector\Yandex\Disk\Resource\Closed $child */
+            //     foreach ($childs['items'] as $child) {
+            //         $created_time = strtotime(date('Y-m-d', strtotime($child->get('created'))));
+            //         if ($expires_time > $created_time) {
+            //             $child->delete(true);
+            //         }
+            //     }
+            // }
         } catch (\Exception $e) {
             throw new \Exception($e->getMessage());
         }
 
         return true;
     }
+
 
     /**
      * @return string
@@ -160,6 +227,7 @@ class YandexDisk extends AbstractStorage
         return $this->config['path'];
     }
 
+
     /**
      * @return string
      *
@@ -173,5 +241,18 @@ class YandexDisk extends AbstractStorage
         }
 
         return $path;
+    }
+
+
+    /**
+     * @param string|int $date
+     *
+     * @return int
+     */
+    protected function getStartDayUtc($date)
+    {
+        $timestamp = is_numeric($date) ? $date : strtotime($date);
+
+        return strtotime(date('Y-m-d', $timestamp) . 'T00:00:00 UTC');
     }
 }

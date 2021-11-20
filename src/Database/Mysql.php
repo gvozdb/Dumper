@@ -9,6 +9,7 @@ class Mysql extends AbstractDatabase
      */
     protected $config = [];
 
+
     /**
      * @param array $config
      *
@@ -18,6 +19,7 @@ class Mysql extends AbstractDatabase
     {
         parent::__construct($config);
     }
+
 
     /**
      * @return void|bool
@@ -41,13 +43,15 @@ class Mysql extends AbstractDatabase
         //
         $arguments = [
             'mysqldump',
-            '-h ' . $this->config['host'],
             '--skip-lock-tables',
+            '--no-tablespaces',
+            '-h ' . $this->config['host'],
             '-u' . $this->config['user'],
             '-p"' . $this->config['pass'] . '"',
             $this->config['name'],
             '>',
             $dest,
+            '2>/dev/null', // no warnings!
         ];
 
         //
@@ -58,7 +62,7 @@ class Mysql extends AbstractDatabase
         if (!file_exists($dest)) {
             throw new \Exception("It was not possible to database dump `{$this->config['name']}`.");
         }
-        $this->setFilePath($dest);
+        $this->setFile($dest);
 
         return true;
     }

@@ -26,6 +26,7 @@ abstract class AbstractPath
      */
     protected $storages = [];
 
+
     /**
      * @param Backup $dumper
      * @param array $config
@@ -40,12 +41,16 @@ abstract class AbstractPath
             'enabled' => false,
             'src' => null,
             'dest' => null,
-            'archive_password' => '',
             'storages' => [],
         ], $config);
 
+        // @deprecated
+        $this->config['compressor']['password'] = isset($this->config['archive_password'])
+            ? $this->config['archive_password']
+            : (@$this->config['compressor']['password'] ?: null);
+
         //
-        foreach (['src', 'dest'] as $k) {
+        foreach (['src', 'dest', 'compressor'] as $k) {
             if (empty($this->config[$k])) {
                 throw new \Exception("Incorrect config for `{$this->config['key']}`. " . print_r($this->config, 1));
             }
@@ -59,6 +64,7 @@ abstract class AbstractPath
         }
     }
 
+
     /**
      * @throws \Exception
      */
@@ -69,6 +75,7 @@ abstract class AbstractPath
         $this->upload();
         $this->clean();
     }
+
 
     /**
      * @return bool
@@ -83,6 +90,7 @@ abstract class AbstractPath
 
         return true;
     }
+
 
     /**
      * @param null|string $src
@@ -101,28 +109,42 @@ abstract class AbstractPath
             $exclude = $this->config['exclude'] ?: [];
         }
 
+        $config = $this->config['compressor'];
+        if (empty($config['class'])) {
+            return;
+        }
+
         try {
-            $compressor = new Compressor\Zip([
+            $class = ucfirst(strtolower($config['class']));
+            if (!class_exists("\Gvozdb\Dumper\Compressor\\{$class}")) {
+                throw new \Exception("Compressor handler `{$class}` not found.");
+            }
+
+            $compressor = new \ReflectionClass("\Gvozdb\Dumper\Compressor\\{$class}");
+            $compressor = $compressor->newInstance(array_merge($config, [
                 'key' => $this->config['key'],
                 'src' => $src,
                 'dest' => $dest,
                 'exclude' => $exclude,
-                'password' => @$this->config['archive_password'] ?: '',
-            ]);
+            ]));
+            /** @var Compressor\AbstractCompressor $compressor */
             if ($compressor->compress() === true) {
                 $src_type = is_dir($src) ? 'directory' : 'file';
                 $this->dumper->log->info("Successfully compressed {$src_type} `{$src}`.");
             }
 
             //
-            if ($filepath = $compressor->getFilePath()) {
-                $this->files[$filepath] = false;
+            if ($files = $compressor->getFiles()) {
+                foreach ($files as $file) {
+                    $this->files[$file] = false;
+                }
             }
-            unset($compressor, $filepath);
+            unset($compressor, $files, $file);
         } catch (\Exception $e) {
             $this->dumper->log->error($e->getMessage());
         }
     }
+
 
     /**
      * @return void
@@ -139,7 +161,7 @@ abstract class AbstractPath
         try {
             $class = ucfirst(strtolower($config['type']));
             if (!class_exists("\Gvozdb\Dumper\Database\\{$class}")) {
-                throw new \Exception("Database handler `{$config['type']}` not found.");
+                throw new \Exception("Database handler `{$class}` not found.");
             }
 
             $database = new \ReflectionClass("\Gvozdb\Dumper\Database\\{$class}");
@@ -147,21 +169,22 @@ abstract class AbstractPath
                 'key' => $this->config['key'],
                 'dest' => $this->config['dest'],
             ]));
+            /** @var Database\AbstractDatabase $database */
             if ($database->export() === true) {
                 $this->dumper->log->info("Successfully database dump for `{$this->config['key']}` user.");
             }
 
             //
-            if ($filepath = $database->getFilePath()) {
+            if ($filepath = $database->getFile()) {
                 $this->compress($filepath, $filepath);
                 @unlink($filepath);
             }
-
             unset($database, $filepath, $class, $config);
         } catch (\Exception $e) {
             $this->dumper->log->error($e->getMessage());
         }
     }
+
 
     /**
      * @throws \Exception
@@ -211,6 +234,7 @@ abstract class AbstractPath
         unset($status);
     }
 
+
     /**
      *
      */
@@ -240,6 +264,7 @@ abstract class AbstractPath
         }
     }
 
+
     /**
      * Clears the folder on the file system
      *
@@ -267,6 +292,7 @@ abstract class AbstractPath
             mkdir($path, 0755, true);
         }
     }
+
 
     /**
      * @param string $path

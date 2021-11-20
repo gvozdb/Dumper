@@ -9,9 +9,10 @@ abstract class AbstractCompressor
      */
     protected $config = [];
     /**
-     * @var null|string $filepath
+     * @var array $files
      */
-    protected $filepath;
+    protected $files = [];
+
 
     /**
      * @param array $config
@@ -21,9 +22,11 @@ abstract class AbstractCompressor
     public function __construct(array $config = [])
     {
         $this->config = array_merge([
-            'password' => '',
             'src' => null,
             'dest' => null,
+            'compress' => 7,
+            'split' => 0,
+            'password' => '',
         ], $config);
 
         //
@@ -34,29 +37,27 @@ abstract class AbstractCompressor
         }
     }
 
-    /**
-     *
-     */
-    public function getFilePath()
-    {
-        return $this->filepath;
-    }
 
     /**
-     * @param string $filepath
+     * @return array
      */
-    protected function setFilePath($filepath)
+    public function getFiles()
     {
-        $this->filepath = $filepath;
+        return $this->files;
     }
+
+
+    /**
+     * @param array $files
+     */
+    protected function setFiles(array $files)
+    {
+        $this->files = $files;
+    }
+
 
     /**
      * @return void|bool
      */
     abstract public function compress();
-
-    /**
-     * @return string
-     */
-    abstract protected function excludePrepare();
 }
