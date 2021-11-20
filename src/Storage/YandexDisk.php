@@ -175,20 +175,6 @@ class YandexDisk extends AbstractStorage
                     }
                 }
             }
-
-            // if ($expires_time = (86400 * $this->config['expires'])) {
-            //     $expires_time = time() - $expires_time;
-            //     $parent = $this->client->getResource($this->getParentPath());
-            //     $childs = $parent->getIterator();
-            //
-            //     /** @var \Arhitector\Yandex\Disk\Resource\Closed $child */
-            //     foreach ($childs['items'] as $child) {
-            //         $created_time = strtotime(date('Y-m-d', strtotime($child->get('created'))));
-            //         if ($expires_time > $created_time) {
-            //             $child->delete(true);
-            //         }
-            //     }
-            // }
         } catch (\Exception $e) {
             throw new \Exception($e->getMessage());
         }

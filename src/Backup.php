@@ -150,7 +150,9 @@ class Backup
             }
             try {
                 $storage = new \ReflectionClass("\Gvozdb\Dumper\Storage\\{$class}");
-                $storageInstance = $storage->newInstance($this, $config);
+                $storageInstance = $storage->newInstance($this, array_merge($config, [
+                    'expires' => @$this->config['expires'] ?: $config['expires'],
+                ]));
                 if ($storageInstance->enabled()) {
                     $this->storages[$class] = $storageInstance;
                 }

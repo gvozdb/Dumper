@@ -1,6 +1,12 @@
 # Changelog
 
 
+## [0.3.2] - 2021-11-20
+
+* Fixed warning `array_merge(): Expected parameter 2 to be an array, null given` in `Logger\Handler`
+* Fixed bug `Undefined index: expires` in `Storage\AbstractStorage`
+
+
 ## [0.3.1] - 2021-11-20
 
 * Fixed composer.json, changed version of `arhitector/yandex` to 2.0.1

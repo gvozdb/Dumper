@@ -36,6 +36,7 @@ abstract class AbstractStorage
 
         $this->config['path'] = strftime(@$this->config['path'] ?: '');
 
+        $this->config['expires'] = @$this->config['expires'] ?: [];
         $this->config['expires'] = is_array($this->config['expires'])
             ? $this->config['expires']
             : ['short_max_days' => $this->config['expires']];

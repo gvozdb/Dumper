@@ -44,6 +44,7 @@ class Handler
         //
         $handlers = [];
         foreach ($this->config['notify'] as $k => $v) {
+            $v = @$v ?: [];
             $v = array_merge([
                 'level' => 'info',
                 'format' => "[%datetime%] [%level_name%] > %message%\n",
