@@ -1,6 +1,11 @@
 # Changelog
 
 
+## [0.3.1] - 2021-11-20
+
+* Fixed composer.json, changed version of `arhitector/yandex` to 2.0.1
+
+
 ## [0.3.0] - 2021-11-20
 
 * Added the ability to select the archiver (section `compressor` in the config)
