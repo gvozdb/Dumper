@@ -3,7 +3,7 @@
 
 ## [0.3.1] - 2021-11-20
 
-* Fixed composer.json, changed version of `arhitector/yandex` to 2.0
+* Fixed composer.json, changed version of `arhitector/yandex` to 2.0.1
 
 
 ## [0.3.0] - 2021-11-20
