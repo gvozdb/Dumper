@@ -81,30 +81,36 @@ class YandexDisk extends AbstractStorage
             return false;
         }
 
-        // todo: сделать 2-4 попытки загрузить файл в облако, если с первой не получилось, ибо часто возникают ошибки `Service Unavailable`
-        try {
-            if (!$path = $this->getPath()) {
-                return false;
-            }
-
-            $filename = pathinfo($filepath, PATHINFO_BASENAME);
-            $resource = $this->client->getResource($path . $filename);
-            if ($resource->has()) {
-                $resource->delete(true);
-            }
-
-            $resource->addListener(
-                'progress',
-                function (\League\Event\Event $event, $percent) use ($filename) {
-                    $this->dumper->progressBar($percent, 100, $filename);
+        do {
+            $try = isset($try) ? ++$try : 0;
+            try {
+                if (!$path = $this->getPath()) {
+                    return false;
                 }
-            );
 
-            $resource->upload($filepath);
-            unset($resource);
-        } catch (\Exception $e) {
-            throw new \Exception($e->getMessage());
-        }
+                $filename = pathinfo($filepath, PATHINFO_BASENAME);
+                $resource = $this->client->getResource($path . $filename);
+                if ($resource->has()) {
+                    $resource->delete(true);
+                }
+
+                $resource->addListener(
+                    'progress',
+                    function (\League\Event\Event $event, $percent) use ($filename) {
+                        $this->dumper->progressBar($percent, 100, $filename);
+                    }
+                );
+
+                $resource->upload($filepath);
+
+                break;
+            } catch (\Exception $e) {
+                if ($try >= 4) { // 4 tries
+                    throw new \Exception($e->getMessage());
+                }
+                sleep(5);
+            }
+        } while (true);
 
         return true;
     }
