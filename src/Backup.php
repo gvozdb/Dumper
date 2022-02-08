@@ -68,7 +68,7 @@ class Backup
             return false;
         }
 
-        $this->log->notice('Dumper is on!');
+        $this->log->notice('%title% Dumper is on!');
 
         $tasks = [];
         $prefix = $this->config['main']['prefix'];
@@ -170,7 +170,7 @@ class Backup
 
         $this->clean();
 
-        $this->log->notice('Dumper is off!');
+        $this->log->notice('%title% Dumper is off!');
 
         $this->log->bufferReset();
 

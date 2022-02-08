@@ -1,6 +1,11 @@
 # Changelog
 
 
+## [0.3.4] - 2022-02-08
+
+* Added title text for logs (property `logs.title`)
+
+
 ## [0.3.3] - 2021-12-29
 
 * Added 4 tries to upload a file to the cloud

@@ -44,12 +44,11 @@ class Handler
         //
         $handlers = [];
         foreach ($this->config['notify'] as $k => $v) {
-            $v = @$v ?: [];
             $v = array_merge([
                 'level' => 'info',
                 'format' => "[%datetime%] [%level_name%] > %message%\n",
                 'dateFormat' => 'd.m.Y H:i:s',
-            ], $v);
+            ], (@$v ?: []));
             $v['levelConstant'] = 'Monolog\Logger::' . strtoupper($v['level']);
 
             switch ($k) {
@@ -138,6 +137,13 @@ class Handler
         if (empty($this->logger)) {
             return false;
         }
+
+        $message = trim(str_replace([
+            '%title%',
+        ], [
+            @$this->config['title'] ?: '',
+        ], $message));
+
         $this->logger->{$action}($message, $context);
 
         return true;

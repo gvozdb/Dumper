@@ -69,6 +69,7 @@ storages:
 #
 logs:
     enabled: true #
+    title: '' # title for logs
     notify:
         # Print to console
         Console:
